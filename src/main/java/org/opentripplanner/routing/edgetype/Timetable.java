@@ -1,12 +1,7 @@
 package org.opentripplanner.routing.edgetype;
 
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 
 import com.beust.jcommander.internal.Lists;
 
@@ -505,8 +500,12 @@ public class Timetable implements Serializable {
                 == TripDescriptor.ScheduleRelationship.CANCELED) {
             newTimes.cancel();
         } else {
+            if (tripId.equals("2:9447"))
+                LOG.info("cos");
             // The GTFS-RT reference specifies that StopTimeUpdates are sorted by stop_sequence.
             Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
+            List<StopTimeUpdate> updatesList = tripUpdate.getStopTimeUpdateList();
+
             if (!updates.hasNext()) {
                 LOG.warn("Won't apply zero-length trip update to trip {}.", tripId);
                 return null;
@@ -517,12 +516,23 @@ public class Timetable implements Serializable {
             Integer delay = null;
 
             for (int i = 0; i < numStops; i++) {
+                int stopIndex = i;
                 boolean match = false;
                 if (update != null) {
                     if (update.hasStopSequence()) {
                         match = update.getStopSequence() == newTimes.getStopSequence(i);
                     } else if (update.hasStopId()) {
+                        String stopId = pattern.getStop(i).getId().getId();
                         match = pattern.getStop(i).getId().getId().equals(update.getStopId());
+                        if (!match) {
+                            for (int j = 0; j < numStops; j++) {
+                                match = pattern.getStop(j).getId().getId().equals(update.getStopId());
+                                if (match) {
+                                    stopIndex = j;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -536,8 +546,8 @@ public class Timetable implements Serializable {
                         return null;
                     } else if (scheduleRelationship ==
                             StopTimeUpdate.ScheduleRelationship.NO_DATA) {
-                        newTimes.updateArrivalDelay(i, 0);
-                        newTimes.updateDepartureDelay(i, 0);
+                        newTimes.updateArrivalDelay(stopIndex, 0);
+                        newTimes.updateDepartureDelay(stopIndex, 0);
                         delay = 0;
                     } else {
                         long today = updateServiceDate.getAsDate(timeZone).getTime() / 1000;
@@ -547,24 +557,24 @@ public class Timetable implements Serializable {
                             if (arrival.hasDelay()) {
                                 delay = arrival.getDelay();
                                 if (arrival.hasTime()) {
-                                    newTimes.updateArrivalTime(i,
+                                    newTimes.updateArrivalTime(stopIndex,
                                             (int) (arrival.getTime() - today));
                                 } else {
-                                    newTimes.updateArrivalDelay(i, delay);
+                                    newTimes.updateArrivalDelay(stopIndex, delay);
                                 }
                             } else if (arrival.hasTime()) {
-                                newTimes.updateArrivalTime(i,
+                                newTimes.updateArrivalTime(stopIndex,
                                         (int) (arrival.getTime() - today));
-                                delay = newTimes.getArrivalDelay(i);
+                                delay = newTimes.getArrivalDelay(stopIndex);
                             } else {
-                                LOG.error("Arrival time at index {} is erroneous.", i);
+                                LOG.error("Arrival time at index {} is erroneous.", stopIndex);
                                 return null;
                             }
                         } else {
                             if (delay == null) {
-                                newTimes.updateArrivalTime(i, TripTimes.UNAVAILABLE);
+                                newTimes.updateArrivalTime(stopIndex, TripTimes.UNAVAILABLE);
                             } else {
-                                newTimes.updateArrivalDelay(i, delay);
+                                newTimes.updateArrivalDelay(stopIndex, delay);
                             }
                         }
 
@@ -573,24 +583,24 @@ public class Timetable implements Serializable {
                             if (departure.hasDelay()) {
                                 delay = departure.getDelay();
                                 if (departure.hasTime()) {
-                                    newTimes.updateDepartureTime(i,
+                                    newTimes.updateDepartureTime(stopIndex,
                                             (int) (departure.getTime() - today));
                                 } else {
-                                    newTimes.updateDepartureDelay(i, delay);
+                                    newTimes.updateDepartureDelay(stopIndex, delay);
                                 }
                             } else if (departure.hasTime()) {
-                                newTimes.updateDepartureTime(i,
+                                newTimes.updateDepartureTime(stopIndex,
                                         (int) (departure.getTime() - today));
-                                delay = newTimes.getDepartureDelay(i);
+                                delay = newTimes.getDepartureDelay(stopIndex);
                             } else {
-                                LOG.error("Departure time at index {} is erroneous.", i);
+                                LOG.error("Departure time at index {} is erroneous.", stopIndex);
                                 return null;
                             }
                         } else {
                             if (delay == null) {
-                                newTimes.updateDepartureTime(i, TripTimes.UNAVAILABLE);
+                                newTimes.updateDepartureTime(stopIndex, TripTimes.UNAVAILABLE);
                             } else {
-                                newTimes.updateDepartureDelay(i, delay);
+                                newTimes.updateDepartureDelay(stopIndex, delay);
                             }
                         }
                     }
@@ -602,17 +612,33 @@ public class Timetable implements Serializable {
                     }
                 } else {
                     if (delay == null) {
-                        newTimes.updateArrivalTime(i, TripTimes.UNAVAILABLE);
-                        newTimes.updateDepartureTime(i, TripTimes.UNAVAILABLE);
+                        newTimes.updateArrivalTime(stopIndex, TripTimes.UNAVAILABLE);
+                        newTimes.updateDepartureTime(stopIndex, TripTimes.UNAVAILABLE);
                     } else {
-                        newTimes.updateArrivalDelay(i, delay);
-                        newTimes.updateDepartureDelay(i, delay);
+                        newTimes.updateArrivalDelay(stopIndex, delay);
+                        newTimes.updateDepartureDelay(stopIndex, delay);
                     }
                 }
             }
             if (update != null) {
                 LOG.error("Part of a TripUpdate object could not be applied successfully to trip {}.", tripId);
                 return null;
+            }
+            for (int i = 0; i < numStops - 1; i++) {
+                if (newTimes.getArrivalTime(i + 1) < newTimes.getDepartureTime(i)) {
+                    newTimes.updateArrivalTime(i + 1, newTimes.getScheduledArrivalTime(i + 1));
+                    newTimes.updateDepartureTime(i + 1, newTimes.getScheduledDepartureTime(i + 1));
+                    if (newTimes.getArrivalTime(i + 1) < newTimes.getDepartureTime(i)) {
+                        int normalInterval =
+                                newTimes.getScheduledArrivalTime(i + 1) - newTimes.getScheduledDepartureTime(i);
+                        int updatedInterval = normalInterval / 2;
+                        newTimes.updateArrivalTime(i + 1,
+                                (newTimes.getArrivalTime(i + 1) + updatedInterval > newTimes.getDepartureTime(i))
+                                        ? newTimes.getArrivalTime(i + 1) + updatedInterval
+                                        : newTimes.getArrivalTime(i + 1) + normalInterval);
+                        newTimes.updateDepartureTime(i + 1, newTimes.getArrivalTime(i + 1));
+                    }
+                }
             }
         }
         if (!newTimes.timesIncreasing()) {
