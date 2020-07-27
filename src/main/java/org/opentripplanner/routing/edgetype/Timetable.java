@@ -511,13 +511,24 @@ public class Timetable implements Serializable {
 
             int numStops = newTimes.getNumStops();
             Integer delay = null;
+            boolean[] isRealtime = new boolean[numStops];
 
             for (int i = 0; i < numStops; i++) {
+                isRealtime[i] = false;
                 int stopIndex = i;
                 boolean match = false;
                 if (update != null) {
                     if (update.hasStopSequence()) {
                         match = update.getStopSequence() == newTimes.getStopSequence(i);
+                        if (!match) {
+                            for (int j = 0; j < numStops; j++) {
+                                match = update.getStopSequence() == newTimes.getStopSequence(j);
+                                if (match) {
+                                    stopIndex = j;
+                                    break;
+                                }
+                            }
+                        }
                     } else if (update.hasStopId()) {
                         match = pattern.getStop(i).getId().getId().equals(update.getStopId());
                         if (!match) {
@@ -600,6 +611,7 @@ public class Timetable implements Serializable {
                             }
                         }
                     }
+                    isRealtime[stopIndex] = true;
 
                     if (updates.hasNext()) {
                         update = updates.next();
@@ -613,6 +625,7 @@ public class Timetable implements Serializable {
                     } else {
                         newTimes.updateArrivalDelay(stopIndex, delay);
                         newTimes.updateDepartureDelay(stopIndex, delay);
+                        isRealtime[stopIndex] = true;
                     }
                 }
             }
@@ -622,9 +635,21 @@ public class Timetable implements Serializable {
             }
             for (int i = 0; i < numStops - 1; i++) {
                 if (newTimes.getArrivalTime(i + 1) < newTimes.getDepartureTime(i)) {
-                    newTimes.updateArrivalTime(i + 1, newTimes.getScheduledArrivalTime(i + 1));
-                    newTimes.updateDepartureTime(i + 1, newTimes.getScheduledDepartureTime(i + 1));
-                    if (newTimes.getArrivalTime(i + 1) < newTimes.getDepartureTime(i)) {
+                    if (isRealtime[i + 1]) {
+                        if (isRealtime[i]) {
+                            if (newTimes.getArrivalTime(i + 1) > newTimes.getScheduledDepartureTime(i)) {
+                                newTimes.updateArrivalTime(i + 1, newTimes.getDepartureTime(i) + 1);
+                            } else {
+                                newTimes.updateArrivalTime(i + 1, newTimes.getScheduledDepartureTime(i) + 1);
+                            }
+                            newTimes.updateDepartureTime(i + 1, newTimes.getArrivalTime(i + 1));
+                            isRealtime[i + 1] = true;
+                        } else {
+                            newTimes.updateArrivalTime(i, newTimes.getArrivalTime(i + 1) - 1);
+                            newTimes.updateDepartureTime(i, newTimes.getArrivalTime(i));
+                            isRealtime[i] = true;
+                        }
+                    } else {
                         int normalInterval =
                                 newTimes.getScheduledArrivalTime(i + 1) - newTimes.getScheduledDepartureTime(i);
                         int updatedInterval = normalInterval / 2;
@@ -634,6 +659,12 @@ public class Timetable implements Serializable {
                                         : newTimes.getArrivalTime(i + 1) + normalInterval);
                         newTimes.updateDepartureTime(i + 1, newTimes.getArrivalTime(i + 1));
                     }
+                }
+            }
+            for (int i = numStops - 1; i > 0; i--) {
+                if (newTimes.getArrivalTime(i) < newTimes.getDepartureTime(i - 1)) {
+                    newTimes.updateArrivalTime(i - 1, newTimes.getDepartureTime(i) - 1);
+                    newTimes.updateDepartureTime(i - 1, newTimes.getArrivalTime(i - 1));
                 }
             }
         }
