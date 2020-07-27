@@ -500,11 +500,8 @@ public class Timetable implements Serializable {
                 == TripDescriptor.ScheduleRelationship.CANCELED) {
             newTimes.cancel();
         } else {
-            if (tripId.equals("2:9447"))
-                LOG.info("cos");
             // The GTFS-RT reference specifies that StopTimeUpdates are sorted by stop_sequence.
             Iterator<StopTimeUpdate> updates = tripUpdate.getStopTimeUpdateList().iterator();
-            List<StopTimeUpdate> updatesList = tripUpdate.getStopTimeUpdateList();
 
             if (!updates.hasNext()) {
                 LOG.warn("Won't apply zero-length trip update to trip {}.", tripId);
@@ -522,7 +519,6 @@ public class Timetable implements Serializable {
                     if (update.hasStopSequence()) {
                         match = update.getStopSequence() == newTimes.getStopSequence(i);
                     } else if (update.hasStopId()) {
-                        String stopId = pattern.getStop(i).getId().getId();
                         match = pattern.getStop(i).getId().getId().equals(update.getStopId());
                         if (!match) {
                             for (int j = 0; j < numStops; j++) {
