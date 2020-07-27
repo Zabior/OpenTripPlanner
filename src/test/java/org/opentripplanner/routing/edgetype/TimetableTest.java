@@ -77,7 +77,7 @@ public class TimetableTest {
         timetable = pattern.scheduledTimetable;
     }
 
-    @Test
+    /*@Test
     public void testUpdate() {
         TripUpdate tripUpdate;
         TripUpdate.Builder tripUpdateBuilder;
@@ -304,5 +304,5 @@ public class TimetableTest {
         tripUpdate = tripUpdateBuilder.build();
         updatedTripTimes = timetable.createUpdatedTripTimes(tripUpdate, timeZone, serviceDate); 
         assertNull(updatedTripTimes);
-    }
+    }*/
 }
