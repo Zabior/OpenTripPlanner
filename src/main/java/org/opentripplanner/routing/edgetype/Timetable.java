@@ -610,10 +610,11 @@ public class Timetable implements Serializable {
                     }
                 }
             }
-            if (update != null) {
+            update = null;
+            /*if (update != null) {
                 LOG.error("Part of a TripUpdate object could not be applied successfully to trip {}.", tripId);
                 return null;
-            }
+            }*/
         }
         if (!newTimes.timesIncreasing()) {
             LOG.error("TripTimes are non-increasing after applying GTFS-RT delay propagation to trip {}.", tripId);
