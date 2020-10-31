@@ -561,9 +561,7 @@ public class Timetable implements Serializable {
                                 return null;
                             }
                         } else {
-                            if (delay == null) {
-                                newTimes.updateArrivalTime(i, TripTimes.UNAVAILABLE);
-                            } else {
+                            if (delay != null) {
                                 newTimes.updateArrivalDelay(i, delay);
                             }
                         }
@@ -587,9 +585,7 @@ public class Timetable implements Serializable {
                                 return null;
                             }
                         } else {
-                            if (delay == null) {
-                                newTimes.updateDepartureTime(i, TripTimes.UNAVAILABLE);
-                            } else {
+                            if (delay != null) {
                                 newTimes.updateDepartureDelay(i, delay);
                             }
                         }
@@ -601,10 +597,7 @@ public class Timetable implements Serializable {
                         update = null;
                     }
                 } else {
-                    if (delay == null) {
-                        newTimes.updateArrivalTime(i, TripTimes.UNAVAILABLE);
-                        newTimes.updateDepartureTime(i, TripTimes.UNAVAILABLE);
-                    } else {
+                    if (delay != null) {
                         newTimes.updateArrivalDelay(i, delay);
                         newTimes.updateDepartureDelay(i, delay);
                     }
